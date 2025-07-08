@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "starlit-water-442014-k7",
+  "private_key_id": "d7c2b0b709974bf3d582ae538aeed60760a84975",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCfEk27JydFyakj\nMWgmmUtEwtZsAo53LBXt/acyQ+COPTWiXxYYdB1i7K65Ki8a3JxTQfyaSgnbdcR3\nFOcLvFtzVWh47WrzJb/5JwNWyHce/LnKB/pVSaUxyy8y9hhRwaN+xwSanOx97i2h\nGMLefyV0c//a8+JG1DCEJqhU4wluqBJ+Z+YtvaEYpG2zoFwHUh82hVulMyEx7F0A\nTWX57QAtQylZL4O680Oe3W3g8wqnzR6LIPaltTApmLCO197xIUsxEQ4mSAgweRa7\nCf9po4G1BuVYN2HAmX/n2a+zAFfc/YqUgYyZuflOqszxJrNYLpYVchdq0fsfsWNC\nqiDfQhZfAgMBAAECggEARU3LMfPwB1bB6wRWlSKKiY29r9c5TLCXaVXu51ZtWmtO\nl8yHquXD+9qUkTXQygo9zYRdUrdZLhVUIHGp7BIHYetfFfiSdRcIWbvml4PFamm/\nZEcviMMKRvR4PuK7W7tayRxaZCZkXsVLefl4xUlt/xue6D0DY8qEzL6u7jTwYhYG\nBUke3E/BvD6OETsD4fSeSaQYD07/ZCPKpRGSL5UvLM4LppN2vgM24B9lxNjBj0L/\n4yb79AXp3gDtoxBGkcnqbYd8mWPW7smtzLFwcvdmlsuAzCkHDm640ggx7EXufodQ\nViiLBwK5VZzU2f0ZnnYitMb+3lyE66c5bEe47OExuQKBgQDMnVH2kSLFmrnu9UAZ\nYwePp+rUYFwGz0dRarB8o0+XWLFb2g86e9rEEt2p1Odpa6hjcroKiYfm/UJF5b/a\n1nBHATMycNkTyUcOvDX6Nt7KAafgHH0O8PaA56HfpZWgwGoBoYRP+35hZOJa2koA\nHzO/r2+QGEnjz3dk5SzbjndmLQKBgQDHBQTvgBH8Pm07OWmny0LSNNNo9gDsE2mW\nC1TsRM42YUbMw8j5dvPyG87LsVMunb+63qwqAoAF51a3Onc+sfCb1Iq8PWwnjBoh\n1NtzoFBPUbukAJ40cJn00WO8ieYqz5kKiU+DnPiJBJ24NA4dMW7O8t1wubTT6oIo\nlJ5e3yPyOwKBgQC7iiYpvHUGcP6iip8ppZ60iM+vwHIYu7s+YG9KjdTRfzVwXrk+\nfW7R8AjDNKS19zrri6gBKHUrvk0UC7SBO7LFIdBvFwegHwfF9bPzln8037eirfnh\ny/HjzGqNthMit7lxrTy8omH/mpvtcc4Jto+TzZSPmfN/nhRsobEvu7CsMQKBgQCV\nN4Uw0NQrTN73JZ+7B+Is2yCbNL8SQafLsOlWUGxQR3Ue97hKmk5i+0h8XpKgg/QJ\n9wQcZ013n7DbpkFbx2xAWgY/Bsp9iETbks2LDurH3d8TIsd7R+WWshvWc4oYFRiI\n1tTAOEP773MVdioS50pObbdr2kDjFpPKO0vWk/VOmwKBgHf90ObKfMsG2wrgiTVk\nv415+LSzQ2Q5++8BEzhrxp+iZPyan+IRuMu2WTy5nzh+DsPwMGSe6iU2fFjAxecI\n8eFZfwKLfNHtBr9UssQENGcerESPRqzlAVr63WQalngun40l6njSt7gM9YFxf+JM\n4/7Wm805pG/zyuZM6mld531F\n-----END PRIVATE KEY-----\n",
+  "client_email": "coleta-awl@starlit-water-442014-k7.iam.gserviceaccount.com",
+  "client_id": "102585616405394331841",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/coleta-awl%40starlit-water-442014-k7.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

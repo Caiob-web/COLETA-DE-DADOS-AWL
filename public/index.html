@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coleta de Dados AWL</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <style>
+      /* Feedbacks, status e barra de progresso */
+      #loading,
+      #sucesso,
+      #sincronizacao {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        font-size: 1.5rem;
+      }
+      #statusPendentes {
+        font-size: 0.9rem;
+        color: #555;
+      }
+      #barraProgressoWrapper {
+        width: 80%;
+        margin: 10px auto;
+        display: none;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      #barraProgresso {
+        height: 20px;
+        width: 0%;
+        background-color: #0052cc;
+        transition: width 0.3s ease;
+      }
+      button {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading -->
+    <div id="loading"><span>Carregando...</span></div>
+
+    <!-- Sucesso (coleta enviada) -->
+    <div id="sucesso">
+      <h2 style="color: green">✔ Coleta enviada com sucesso!</h2>
+      <button id="btnNovaColeta" style="padding: 10px 20px">Nova Coleta</button>
+    </div>
+
+    <!-- Sincronização concluída -->
+    <div id="sincronizacao">
+      <h2 style="color: #0052cc">✔ Sincronização concluída!</h2>
+      <button id="btnFecharSincronizacao" style="padding: 10px 20px">OK</button>
+    </div>
+
+    <!-- Header -->
+    <div style="text-align: center; padding: 1rem 0">
+      <img
+        id="logo"
+        src="https://cdn.glitch.global/8f55e9e2-4796-40e2-9243-b1fc4c35f99b/baixados%20(1).png?v=1747363130360"
+        alt="Logo EDP"
+        style="width: 120px; margin-bottom: 1rem"
+      />
+      <h1>Coleta de Dados <span style="color: #0052cc">AWL</span></h1>
+    </div>
+
+    <!-- Formulário -->
+    <form id="formulario">
+      <div class="field">
+        <label for="coordenadas">Latitude e Longitude</label>
+        <input type="text" id="coordenadas" name="coordenadas" readonly />
+        <button type="button" id="btnCoordenadas">Carregar Coordenadas</button>
+      </div>
+
+      <div class="field">
+        <label for="rua">Rua</label>
+        <input type="text" id="rua" name="rua" readonly />
+      </div>
+
+      <div class="field">
+        <label for="bairro">Bairro</label>
+        <input type="text" id="bairro" name="bairro" readonly />
+      </div>
+
+      <div class="field">
+        <label for="cidade">Cidade</label>
+        <input type="text" id="cidade" name="cidade" readonly />
+      </div>
+
+      <div class="field">
+        <label for="fotos">Fotos (até 5)</label>
+        <input type="file" id="fotos" name="fotos" multiple accept="image/*" />
+      </div>
+
+      <div style="text-align: center; margin-top: 1rem">
+        <button type="submit" style="padding: 10px 20px">Enviar</button>
+      </div>
+    </form>
+
+    <!-- Sincronizar e status -->
+    <div style="text-align: center; margin: 1.5rem 0">
+      <button id="btnSincronizar" style="padding: 10px 20px">
+        🔄 Sincronizar Pendentes
+      </button>
+      <p id="statusPendentes">Nenhuma coleta offline salva</p>
+      <p
+        id="progressoSincronizacao"
+        style="font-weight: bold; color: #0052cc"
+      ></p>
+      <div id="barraProgressoWrapper">
+        <div id="barraProgresso"></div>
+      </div>
+    </div>
+
+    <!-- Atualiza aqui para usar main.js -->
+    <script src="main.js" defer></script>
+  </body>
+</html>

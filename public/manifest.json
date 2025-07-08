@@ -1,0 +1,22 @@
+{
+  "name": "Coleta de Dados AWL",
+  "short_name": "AWL Coleta",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0052cc",
+  "description": "App de coleta de dados com suporte offline",
+  "icons": [
+    {
+      "src": "https://cdn.glitch.global/8f55e9e2-4796-40e2-9243-b1fc4c35f99b/baixados%20(1).png?v=1747363130360",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn.glitch.global/8f55e9e2-4796-40e2-9243-b1fc4c35f99b/baixados%20(1).png?v=1747363130360",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
