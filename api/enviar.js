@@ -1,15 +1,14 @@
-// api/enviar.js
 import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).end('Only POST');
+    return res.status(405).end('Método não permitido');
   }
 
   try {
-    // 1) Reconstrói credenciais a partir de ENV (definidas no Vercel)
+    // 1) Reconstrói as credenciais da conta de serviço a partir de ENV do Vercel
     const credentials = {
       type: process.env.GOOGLE_TYPE,
       project_id: process.env.GOOGLE_PROJECT_ID,
@@ -24,7 +23,7 @@ export default async function handler(req, res) {
       universe_domain: process.env.GOOGLE_UNIVERSE_DOMAIN,
     };
 
-    // 2) JWT client
+    // 2) Cria o client JWT e autentica
     const authClient = new google.auth.JWT({
       email: credentials.client_email,
       key: credentials.private_key,
@@ -38,58 +37,54 @@ export default async function handler(req, res) {
     const sheets = google.sheets({ version: 'v4', auth: authClient });
     const drive  = google.drive({ version: 'v3', auth: authClient });
 
-    // 3) Garante uploads dir
+    // 3) Garante que a pasta 'uploads' exista (no filesystem do servidor)
     const uploadsDir = path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-    // 4) Desconstrói body
+    // 4) Extrai dados do corpo da requisição
     const { latitude, longitude, rua, bairro, cidade, fotos } = req.body;
     const linksFotos = [];
 
-    // 5) Faz upload das fotos
+    // 5) Faz upload de até 5 fotos para o Drive
     for (let i = 0; i < Math.min(fotos.length, 5); i++) {
       const base64 = fotos[i];
       if (!base64.includes(',')) continue;
 
       const data = base64.split(',')[1];
       const buffer = Buffer.from(data, 'base64');
-      const filename = `foto_${Date.now()}_${i + 1}.jpg`;
-      const tmp = path.join(uploadsDir, filename);
-      fs.writeFileSync(tmp, buffer);
+      const filename = `foto_${Date.now()}_${i+1}.jpg`;
+      const tmpPath = path.join(uploadsDir, filename);
+      fs.writeFileSync(tmpPath, buffer);
 
+      // envia ao Drive
       const { data: upload } = await drive.files.create({
         resource: { name: filename, parents: [process.env.DRIVE_FOLDER_ID] },
-        media: { mimeType: 'image/jpeg', body: fs.createReadStream(tmp) },
+        media: { mimeType: 'image/jpeg', body: fs.createReadStream(tmpPath) },
         fields: 'id',
       });
+      // libera acesso público
       await drive.permissions.create({
         fileId: upload.id,
         requestBody: { role: 'reader', type: 'anyone' },
       });
       linksFotos.push(`https://drive.google.com/file/d/${upload.id}/view?usp=sharing`);
-      fs.unlinkSync(tmp);
+
+      // remove arquivo temporário
+      fs.unlinkSync(tmpPath);
     }
 
-    // 6) Monta linha e insere no Sheets
+    // 6) Monta a linha para o Google Sheets
     const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const row = [
       timestamp,
       `${latitude},${longitude}`,
-      rua, bairro, cidade,
+      rua,
+      bairro,
+      cidade,
       ...linksFotos
     ];
+    // garante 13 colunas preenchidas (conforme sua planilha)
     while (row.length < 13) row.push('');
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.SHEET_ID,
-      range: 'COLETA DE DADOS AWL!A1',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [row] },
-    });
-
-    res.status(200).send('OK');
-  } catch (err) {
-    console.error('Erro no /api/enviar:', err);
-    res.status(500).send({ error: err.message });
-  }
-}
+    // 7) Insere no Sheets
+    await sheets.spr
