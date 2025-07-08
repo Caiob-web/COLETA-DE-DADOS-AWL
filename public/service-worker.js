@@ -1,22 +1,28 @@
 // service-worker.js
+
+// 1) Nome da cache – incremente quando trocar assets
 const CACHE_NAME = 'awl-cache-v3';
+
+// 2) Lista de arquivos estáticos para pré-cache (shell da PWA)
 const ASSETS = [
-  '/',               // índice (cache de shell)
-  '/index.html',     // para fallback de navegação
+  '/',            // index.html (navegação)
+  '/index.html',  // fallback de navegação offline
   '/style.css',
   '/main.js',
   '/manifest.json',
-  // adicione aqui qualquer outro arquivo estático que queira pré-cachear
+  // ...adicione aqui outras assets estáticas que queira pré-cachear
 ];
 
+// 3) Durante a instalação, pré-cacheamos todos os ASSETS e ativamos imediatamente
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
+      .then(() => self.skipWaiting()) // força o SW a ativar sem esperar
   );
 });
 
+// 4) Ao ativar, removemos caches antigos e assumimos o controle das páginas
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
@@ -27,39 +33,42 @@ self.addEventListener('activate', event => {
             .map(key => caches.delete(key))
         )
       )
-      .then(() => self.clients.claim())
+      .then(() => self.clients.claim()) // passa a controlar todas as abas abertas
   );
 });
 
-// network-first para API e assets; 
-// network-only para navegações, com fallback para /index.html se offline
+// 5) Estratégia de fetch:
+//    - Navegações (mode === 'navigate'): network-only, com fallback para /index.html offline
+//    - Outros assets/API do nosso domínio: network-first, atualiza cache e fallback para cache
+//    - Qualquer outra requisição externa: deixa seguir normalmente
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // 1) Se for navegação (page load), tenta rede e, em offline, retorna cache de /index.html
+  // 5.1) Se for navegação (page load)
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then(res => res)
+        .then(response => response)
         .catch(() => caches.match('/index.html'))
     );
     return;
   }
 
-  // 2) Para requisições aos nossos próprios assets ou API, network-first com cache fallback
+  // 5.2) Se for um asset ou chamada API do mesmo domínio
   if (url.origin === location.origin) {
     event.respondWith(
       fetch(request)
-        .then(networkRes => {
+        .then(networkResponse => {
           // atualiza cache
-          const copy = networkRes.clone();
+          const copy = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-          return networkRes;
+          return networkResponse;
         })
         .catch(() => caches.match(request))
     );
+    return;
   }
 
-  // 3) Fora do nosso domínio, deixa seguir normalmente
+  // 5.3) Para qualquer outra origem, não interferimos
 });
