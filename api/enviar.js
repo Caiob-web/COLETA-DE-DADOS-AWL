@@ -1,8 +1,10 @@
-import { google } from 'googleapis';
-import fs from 'fs';
-import path from 'path';
+// pages/api/enviar.js
 
-export default async function handler(req, res) {
+const { google } = require('googleapis');
+const fs = require('fs');
+const path = require('path');
+
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).end('Método não permitido');
   }
@@ -13,7 +15,7 @@ export default async function handler(req, res) {
       type: process.env.GOOGLE_TYPE,
       project_id: process.env.GOOGLE_PROJECT_ID,
       private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, '\n'),
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
       client_id: process.env.GOOGLE_CLIENT_ID,
       auth_uri: process.env.GOOGLE_AUTH_URI,
@@ -37,12 +39,12 @@ export default async function handler(req, res) {
     const sheets = google.sheets({ version: 'v4', auth: authClient });
     const drive  = google.drive({ version: 'v3', auth: authClient });
 
-    // 3) Garante que a pasta 'uploads' exista (no filesystem do servidor)
+    // 3) Garante que a pasta 'uploads' exista
     const uploadsDir = path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
     // 4) Extrai dados do corpo da requisição
-    const { latitude, longitude, rua, bairro, cidade, fotos } = req.body;
+    const { latitude, longitude, rua, bairro, cidade, fotos = [] } = req.body;
     const linksFotos = [];
 
     // 5) Faz upload de até 5 fotos para o Drive
@@ -62,7 +64,6 @@ export default async function handler(req, res) {
         media: { mimeType: 'image/jpeg', body: fs.createReadStream(tmpPath) },
         fields: 'id',
       });
-      // libera acesso público
       await drive.permissions.create({
         fileId: upload.id,
         requestBody: { role: 'reader', type: 'anyone' },
@@ -83,8 +84,22 @@ export default async function handler(req, res) {
       cidade,
       ...linksFotos
     ];
-    // garante 13 colunas preenchidas (conforme sua planilha)
     while (row.length < 13) row.push('');
 
     // 7) Insere no Sheets
-    await sheets.spr
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: process.env.SHEETS_ID,
+      range: 'A1:M1',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] },
+    });
+
+    // 8) Retorna sucesso
+    return res.status(200).json({ success: true, links: linksFotos });
+
+  } catch (err) {
+    console.error('Erro na função /api/enviar:', err);
+    return res.status(500).json({ error: err.message });
+  }
+};
