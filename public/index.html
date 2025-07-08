@@ -45,6 +45,19 @@
       button {
         cursor: pointer;
       }
+      .field {
+        margin-bottom: 1rem;
+      }
+      .field label {
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      .field input,
+      .field button {
+        width: 100%;
+        padding: 0.5rem;
+        box-sizing: border-box;
+      }
     </style>
   </head>
   <body>
@@ -54,13 +67,13 @@
     <!-- Sucesso (coleta enviada) -->
     <div id="sucesso">
       <h2 style="color: green">✔ Coleta enviada com sucesso!</h2>
-      <button id="btnNovaColeta" style="padding: 10px 20px">Nova Coleta</button>
+      <button id="btnNovaColeta">Nova Coleta</button>
     </div>
 
     <!-- Sincronização concluída -->
     <div id="sincronizacao">
       <h2 style="color: #0052cc">✔ Sincronização concluída!</h2>
-      <button id="btnFecharSincronizacao" style="padding: 10px 20px">OK</button>
+      <button id="btnFecharSincronizacao">OK</button>
     </div>
 
     <!-- Header -->
@@ -103,26 +116,21 @@
       </div>
 
       <div style="text-align: center; margin-top: 1rem">
-        <button type="submit" style="padding: 10px 20px">Enviar</button>
+        <button type="submit">Enviar</button>
       </div>
     </form>
 
     <!-- Sincronizar e status -->
     <div style="text-align: center; margin: 1.5rem 0">
-      <button id="btnSincronizar" style="padding: 10px 20px">
-        🔄 Sincronizar Pendentes
-      </button>
+      <button id="btnSincronizar">🔄 Sincronizar Pendentes</button>
       <p id="statusPendentes">Nenhuma coleta offline salva</p>
-      <p
-        id="progressoSincronizacao"
-        style="font-weight: bold; color: #0052cc"
-      ></p>
+      <p id="progressoSincronizacao" style="font-weight: bold; color: #0052cc"></p>
       <div id="barraProgressoWrapper">
         <div id="barraProgresso"></div>
       </div>
     </div>
 
-    <!-- Atualiza aqui para usar main.js -->
+    <!-- Agora usando main.js -->
     <script src="main.js" defer></script>
   </body>
 </html>
