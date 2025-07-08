@@ -30,18 +30,17 @@ const SCOPES = [
 
 // 4) Monta o objeto de credenciais a partir de ENV vars
 const credentials = {
-  type:                         process.env.GOOGLE_TYPE,
-  project_id:                   process.env.GOOGLE_PROJECT_ID,
-  private_key_id:               process.env.GOOGLE_PRIVATE_KEY_ID,
-  // IMPORTANTE: a chave deve conter os '\n' no lugar das quebras de linha
-  private_key:                  process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  client_email:                 process.env.GOOGLE_CLIENT_EMAIL,
-  client_id:                    process.env.GOOGLE_CLIENT_ID,
-  auth_uri:                     process.env.GOOGLE_AUTH_URI,
-  token_uri:                    process.env.GOOGLE_TOKEN_URI,
-  auth_provider_x509_cert_url:  process.env.GOOGLE_AUTH_PROVIDER_CERT_URL,
-  client_x509_cert_url:         process.env.GOOGLE_CLIENT_CERT_URL,
-  universe_domain:              process.env.GOOGLE_UNIVERSE_DOMAIN
+  type:                        process.env.GOOGLE_TYPE,
+  project_id:                  process.env.GOOGLE_PROJECT_ID,
+  private_key_id:              process.env.GOOGLE_PRIVATE_KEY_ID,
+  private_key:                 process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  client_email:                process.env.GOOGLE_CLIENT_EMAIL,
+  client_id:                   process.env.GOOGLE_CLIENT_ID,
+  auth_uri:                    process.env.GOOGLE_AUTH_URI,
+  token_uri:                   process.env.GOOGLE_TOKEN_URI,
+  auth_provider_x509_cert_url: process.env.GOOGLE_AUTH_PROVIDER_CERT_URL,
+  client_x509_cert_url:        process.env.GOOGLE_CLIENT_CERT_URL,
+  universe_domain:             process.env.GOOGLE_UNIVERSE_DOMAIN
 };
 
 // 5) IDs da sua planilha e da pasta do Drive também por ENV
@@ -50,13 +49,14 @@ const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID;
 
 // 6) Instancia o client JWT para autenticar
 const authClient = new google.auth.JWT({
-  email: credentials.client_email,
-  key:   credentials.private_key,
+  email:  credentials.client_email,
+  key:    credentials.private_key,
   scopes: SCOPES
 });
 
 // 7) Rota de recebimento dos dados
-app.post('/enviar', async (req, res) => {
+//    Note: usamos `/api/send` para alinhar com a convenção Vercel
+app.post('/api/send', async (req, res) => {
   try {
     // 7.1) Autoriza com as credenciais
     await authClient.authorize();
@@ -64,44 +64,35 @@ app.post('/enviar', async (req, res) => {
     const drive  = google.drive ({ version: 'v3', auth: authClient });
 
     // 7.2) Extrai do corpo da requisição
-    const { latitude, longitude, rua, bairro, cidade, fotos } = req.body;
+    const { latitude, longitude, rua, bairro, cidade, fotos = [] } = req.body;
     const linksFotos = [];
 
     // 7.3) Faz upload de até 5 fotos no Drive
     for (let i = 0; i < Math.min(fotos.length, 5); i++) {
       const base64 = fotos[i];
       if (!base64.includes(',')) continue;
-
       try {
-        const data   = base64.split(',')[1];
-        const buffer = Buffer.from(data, 'base64');
+        const data     = base64.split(',')[1];
+        const buffer   = Buffer.from(data, 'base64');
         const filename = `foto_${Date.now()}_${i+1}.jpg`;
-        const tempPath = path.join(uploadsDir, filename);
-        fs.writeFileSync(tempPath, buffer);
+        const tmpPath  = path.join(uploadsDir, filename);
+        fs.writeFileSync(tmpPath, buffer);
 
-        // Metadata e media para o Drive
-        const fileMeta = { name: filename, parents: [DRIVE_FOLDER_ID] };
-        const media    = { mimeType: 'image/jpeg', body: fs.createReadStream(tempPath) };
-
-        // Upload
-        const uploadRes = await drive.files.create({
-          resource: fileMeta,
-          media,
-          fields: 'id'
+        // envia ao Drive
+        const { data: upload } = await drive.files.create({
+          resource: { name: filename, parents: [DRIVE_FOLDER_ID] },
+          media:    { mimeType: 'image/jpeg', body: fs.createReadStream(tmpPath) },
+          fields:   'id'
         });
-        const fileId = uploadRes.data.id;
-
-        // Torna o arquivo público
+        const fileId = upload.id;
         await drive.permissions.create({
           fileId,
           requestBody: { role: 'reader', type: 'anyone' }
         });
-
-        // Guarda o link
         linksFotos.push(`https://drive.google.com/file/d/${fileId}/view?usp=sharing`);
-        fs.unlinkSync(tempPath);
-      } catch (err) {
-        console.warn(`Erro ao processar imagem ${i+1}:`, err.message);
+        fs.unlinkSync(tmpPath);
+      } catch (imgErr) {
+        console.warn(`Erro processando imagem ${i+1}:`, imgErr.message);
       }
     }
 
@@ -116,24 +107,27 @@ app.post('/enviar', async (req, res) => {
       cidade,
       ...linksFotos
     ];
-    // Preenche até 13 colunas
     while (row.length < 13) row.push('');
 
-    // 7.5) Grava no Google Sheets
+    // 7.5) Grava no Google Sheets na aba “COLETA DE DADOS AWL” a partir da célula A1
     await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID,
-      range:         'COLETA DE DADOS AWL!A1',
+      spreadsheetId:    SHEET_ID,
+      range:            'COLETA DE DADOS AWL!A1',
       valueInputOption: 'USER_ENTERED',
-      requestBody:      { values: [ row ] }
+      insertDataOption: 'INSERT_ROWS',
+      requestBody:      { values: [row] }
     });
 
-    res.send('OK');
+    // 7.6) Retorna sucesso
+    return res.status(200).json({ success: true, links: linksFotos });
   } catch (err) {
     console.error('Erro geral:', err);
-    res.status(500).send('Erro: ' + err.message);
+    return res.status(500).json({ error: err.message });
   }
 });
 
 // 8) Sobe o servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Servidor rodando em http://localhost:${PORT}`)
+);
