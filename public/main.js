@@ -1,29 +1,36 @@
 // main.js
 
 const apiKey = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
-// Na Vercel, a função backend estará em /api/enviar.js
-const webhookUrl = '/api/enviar';
+const webhookUrl = "/enviar";
 const dbName = "coletas_offline";
 let db;
 
 /**
- * 1) Abre o IndexedDB e, só no onsuccess, chama atualizarStatusPendentes()
+ * Força o SW mais recente (caso já esteja registrado)
+ */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg) {
+      reg.update();      // baixa a nova versão do SW
+    }
+  });
+}
+
+/**
+ * 1) Abre IndexedDB e só chama atualizarStatusPendentes no sucesso
  */
 function abrirDB() {
   console.log("Abrindo IndexedDB...");
   const req = indexedDB.open(dbName, 1);
-
   req.onerror = () => console.error("Erro ao abrir IndexedDB:", req.error);
-
-  req.onupgradeneeded = (e) => {
+  req.onupgradeneeded = e => {
     console.log("Atualizando versão do DB...");
     const inst = e.target.result;
     if (!inst.objectStoreNames.contains("coletas")) {
       inst.createObjectStore("coletas", { autoIncrement: true });
     }
   };
-
-  req.onsuccess = (e) => {
+  req.onsuccess = e => {
     db = e.target.result;
     console.log("IndexedDB aberto com sucesso:", dbName);
     atualizarStatusPendentes();
@@ -35,22 +42,21 @@ function abrirDB() {
  */
 function atualizarStatusPendentes() {
   if (!db) return;
-  const tx    = db.transaction("coletas", "readonly");
+  const tx = db.transaction("coletas", "readonly");
   const store = tx.objectStore("coletas");
-  const cnt   = store.count();
-
-  cnt.onsuccess = (e) => {
+  const cntReq = store.count();
+  cntReq.onsuccess = e => {
     const n = e.target.result;
     document.getElementById("statusPendentes").textContent =
       n > 0
         ? `${n} coleta(s) offline pendente(s)`
         : "Nenhuma coleta offline salva";
   };
-
-  cnt.onerror = () => console.error("Erro ao contar coletas:", cnt.error);
+  cntReq.onerror = () =>
+    console.error("Erro ao contar coletas:", cntReq.error);
 }
 
-/** 3) Feedbacks visuais */
+/** 3) Funções de feedback visual */
 function exibirLoading(on) {
   document.getElementById("loading").style.display = on ? "flex" : "none";
 }
@@ -62,32 +68,36 @@ function exibirSincronizacao(on) {
 }
 
 /**
- * 4) Geolocalização + reverse lookup
+ * 4) Configura botão de geolocalização + reverse geocoding
  */
 function configurarGeolocalizacao() {
   document.getElementById("btnCoordenadas").addEventListener("click", () => {
     exibirLoading(true);
     if (!navigator.geolocation) {
       alert("Geolocalização não suportada.");
-      return exibirLoading(false);
+      exibirLoading(false);
+      return;
     }
-
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      async pos => {
         const { latitude: lat, longitude: lon } = pos.coords;
         document.getElementById("coordenadas").value = `${lat}, ${lon}`;
         try {
-          const res  = await fetch(
+          const res = await fetch(
             `https://us1.locationiq.com/v1/reverse?key=${apiKey}&lat=${lat}&lon=${lon}&format=json`
           );
           const data = await res.json();
-          document.getElementById("rua").value     = data.address.road || "";
-          document.getElementById("bairro").value  =
+          document.getElementById("rua").value =
+            data.address.road || "";
+          document.getElementById("bairro").value =
             data.address.suburb || data.address.neighbourhood || "";
-          document.getElementById("cidade").value  =
-            data.address.city || data.address.town || data.address.village || "";
+          document.getElementById("cidade").value =
+            data.address.city ||
+            data.address.town ||
+            data.address.village ||
+            "";
         } catch (err) {
-          console.error("Erro no reverse lookup:", err);
+          console.error("Erro no reverse geocoding:", err);
           alert("Erro ao buscar endereço.");
         } finally {
           exibirLoading(false);
@@ -102,36 +112,34 @@ function configurarGeolocalizacao() {
 }
 
 /**
- * 5) Envio do formulário + fallback offline
+ * 5) Configura envio do formulário (online ou offline)
  */
 function configurarFormulario() {
-  const form  = document.getElementById("formulario");
-  const btnNo = document.getElementById("btnNovaColeta");
+  const form = document.getElementById("formulario");
+  const btnNova = document.getElementById("btnNovaColeta");
 
-  form.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", async e => {
     e.preventDefault();
     exibirLoading(true);
 
-    // Captura coords
     const [lat, lon] = (
       document.getElementById("coordenadas").value || ","
     ).split(",");
-
-    // Converte até 5 fotos para base64
-    const files      = document.getElementById("fotos").files;
+    const files = document.getElementById("fotos").files;
     const fotosBase64 = [];
-    let totalSize     = 0;
+    let totalSize = 0;
 
+    // Converte até 5 fotos para Base64
     for (let i = 0; i < Math.min(files.length, 5); i++) {
       const f = files[i];
       totalSize += f.size;
       if (f.size > 50e6 || totalSize > 200e6) {
-        alert("Limite de tamanho das fotos atingido.");
+        alert("Limite de tamanho atingido.");
         exibirLoading(false);
         return;
       }
       fotosBase64.push(
-        await new Promise((r) => {
+        await new Promise(r => {
           const reader = new FileReader();
           reader.onload = () => r(reader.result);
           reader.readAsDataURL(f);
@@ -140,72 +148,79 @@ function configurarFormulario() {
     }
 
     const dados = {
-      latitude:  lat.trim(),
+      latitude: lat.trim(),
       longitude: lon.trim(),
-      rua:       document.getElementById("rua").value,
-      bairro:    document.getElementById("bairro").value,
-      cidade:    document.getElementById("cidade").value,
-      fotos:     fotosBase64
+      rua: document.getElementById("rua").value,
+      bairro: document.getElementById("bairro").value,
+      cidade: document.getElementById("cidade").value,
+      fotos: fotosBase64,
     };
 
     try {
       const resp = await fetch(webhookUrl, {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(dados)
+        body: JSON.stringify(dados),
       });
-      console.log("Resposta:", await resp.text());
+      if (!resp.ok) {
+        const txt = await resp.text();
+        console.error("Erro no servidor:", resp.status, txt);
+        alert("Falha ao enviar: " + txt);
+        exibirLoading(false);
+        return;
+      }
+      console.log("Enviado com sucesso");
       form.reset();
       exibirSucesso(true);
+      atualizarStatusPendentes();
     } catch (err) {
-      console.warn("Fetch falhou (offline?), salvando localmente:", err);
+      console.warn("Offline ou erro no fetch:", err);
+      // Salva no IndexedDB se offline/falha
       const tx = db.transaction("coletas", "readwrite");
       tx.objectStore("coletas").add(dados);
-      tx.oncomplete = () => {
-        atualizarStatusPendentes();
-        alert("Coleta salva offline. Sincronize depois.");
-      };
+      tx.oncomplete = () => atualizarStatusPendentes();
+      alert("Coleta salva offline. Sincronize depois.");
     } finally {
       exibirLoading(false);
     }
   });
 
-  btnNo.addEventListener("click", () => exibirSucesso(false));
+  btnNova.addEventListener("click", () => exibirSucesso(false));
 }
 
 /**
- * 6) Sincronização de pendentes
+ * 6) Configura botão de sincronizar pendentes
  */
 function configurarSincronizacao() {
   document.getElementById("btnSincronizar").addEventListener("click", async () => {
     if (!db) return;
     exibirLoading(true);
 
-    const progresso    = document.getElementById("progressoSincronizacao");
+    const progresso = document.getElementById("progressoSincronizacao");
     const barraWrapper = document.getElementById("barraProgressoWrapper");
-    const barra        = document.getElementById("barraProgresso");
+    const barra = document.getElementById("barraProgresso");
     barraWrapper.style.display = "block";
-    progresso.textContent      = "";
-    barra.style.width          = "0%";
+    progresso.textContent = "";
+    barra.style.width = "0%";
 
-    const store   = db.transaction("coletas", "readonly").objectStore("coletas");
-    const allDados = await new Promise((r) => (store.getAll().onsuccess = (e) => r(e.target.result)));
-    const allKeys  = await new Promise((r) => (store.getAllKeys().onsuccess = (e) => r(e.target.result)));
+    const store = db.transaction("coletas", "readonly").objectStore("coletas");
+    const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
+    const allKeys = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
 
     let enviado = 0;
     progresso.textContent = `Sincronizando 0 de ${allDados.length}`;
 
     for (let i = 0; i < allDados.length; i++) {
       try {
-        const r = await fetch(webhookUrl, {
-          method:  "POST",
+        const res = await fetch(webhookUrl, {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify(allDados[i])
+          body: JSON.stringify(allDados[i]),
         });
-        if (r.ok) {
-          await new Promise((del) => {
-            const txDel = db.transaction("coletas", "readwrite");
-            txDel.objectStore("coletas").delete(allKeys[i]).onsuccess = del;
+        if (res.ok) {
+          await new Promise(del => {
+            const tx = db.transaction("coletas", "readwrite");
+            tx.objectStore("coletas").delete(allKeys[i]).onsuccess = del;
           });
           enviado++;
           progresso.textContent = `Sincronizando ${enviado} de ${allDados.length}`;
@@ -240,10 +255,4 @@ window.addEventListener("DOMContentLoaded", () => {
   configurarGeolocalizacao();
   configurarFormulario();
   configurarSincronizacao();
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(() => console.log("✔ SW registrado."))
-      .catch((e) => console.warn("Falha ao registrar SW:", e));
-  }
 });
