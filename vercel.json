@@ -1,17 +1,21 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/**/*.js",   "use": "@vercel/node"    },
-    { "src": "public/**/*",   "use": "@vercel/static"  }
+    { "src": "api/**/*.js",   "use": "@vercel/node"   },
+    { "src": "public/**/*",   "use": "@vercel/static" }
   ],
   "routes": [
-    // serve a sua API em /api/enviar
-    { "src": "/api/enviar",    "dest": "/api/enviar.js" },
-
-    // roteia /enviar para a mesma função
-    { "src": "/enviar",        "dest": "/api/enviar.js" },
-
-    // tudo o mais vai para o seu public
-    { "src": "/(.*)",          "dest": "/public/$1" }
+    {
+      "src": "/api/enviar",
+      "dest": "/api/enviar.js"
+    },
+    {
+      "src": "/enviar",
+      "dest": "/api/enviar.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
   ]
 }
