@@ -1,15 +1,14 @@
 // service-worker.js
-
 const CACHE_NAME = 'awl-cache-v2';
 const ASSETS = [
-  '/',            // HTML principal
-  '/style.css',   // Seu CSS
-  '/main.js',     // Seu JS renomeado
+  '/',               // índice (cache de shell)
+  '/index.html',     // para fallback de navegação
+  '/style.css',
+  '/main.js',
   '/manifest.json',
-  // Liste aqui outras assets estáticas que você queira cachear
+  // adicione aqui qualquer outro arquivo estático que queira pré-cachear
 ];
 
-// Ao instalar, pré-cacheamos somente os assets estáticos
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -18,38 +17,49 @@ self.addEventListener('install', event => {
   );
 });
 
-// Ao ativar, limpamos caches antigos
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
+    caches.keys()
+      .then(keys =>
+        Promise.all(
+          keys
+            .filter(key => key !== CACHE_NAME)
+            .map(key => caches.delete(key))
+        )
       )
-    )
-    .then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
-// Estratégia network-first: tenta a rede, cai no cache se falhar
+// network-first para API e assets; 
+// network-only para navegações, com fallback para /index.html se offline
 self.addEventListener('fetch', event => {
-  // Só interceptamos GET para nossos próprios assets
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // 1) Se for navegação (page load), tenta rede e, em offline, retorna cache de /index.html
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(res => res)
+        .catch(() => caches.match('/index.html'))
+    );
     return;
   }
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Se vier da rede com sucesso, atualiza o cache
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(() =>
-        // Se der erro (offline), busca no cache
-        caches.match(event.request)
-      )
-  );
+  // 2) Para requisições aos nossos próprios assets ou API, network-first com cache fallback
+  if (url.origin === location.origin) {
+    event.respondWith(
+      fetch(request)
+        .then(networkRes => {
+          // atualiza cache
+          const copy = networkRes.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          return networkRes;
+        })
+        .catch(() => caches.match(request))
+    );
+  }
+
+  // 3) Fora do nosso domínio, deixa seguir normalmente
 });
