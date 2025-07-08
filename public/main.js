@@ -2,7 +2,7 @@
 
 const apiKey = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
 // Na Vercel, a função backend estará em /api/enviar.js
-const webhookUrl = "/api/enviar";
+const webhookUrl = '/api/enviar';
 const dbName = "coletas_offline";
 let db;
 
