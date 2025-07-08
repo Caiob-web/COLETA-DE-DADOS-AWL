@@ -10,12 +10,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // 1) Reconstrói as credenciais da conta de serviço a partir de ENV do Vercel
+    // 1) Reconstrói as credenciais da conta de serviço a partir das ENVs
     const credentials = {
       type: process.env.GOOGLE_TYPE,
       project_id: process.env.GOOGLE_PROJECT_ID,
       private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\n/g, '\n'),
+      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       client_email: process.env.GOOGLE_CLIENT_EMAIL,
       client_id: process.env.GOOGLE_CLIENT_ID,
       auth_uri: process.env.GOOGLE_AUTH_URI,
@@ -88,7 +88,7 @@ module.exports = async function handler(req, res) {
 
     // 7) Insere no Sheets
     await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.SHEETS_ID,
+      spreadsheetId: process.env.SHEET_ID,
       range: 'A1:M1',
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
@@ -97,7 +97,6 @@ module.exports = async function handler(req, res) {
 
     // 8) Retorna sucesso
     return res.status(200).json({ success: true, links: linksFotos });
-
   } catch (err) {
     console.error('Erro na função /api/enviar:', err);
     return res.status(500).json({ error: err.message });
