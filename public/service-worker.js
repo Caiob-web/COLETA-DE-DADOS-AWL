@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = 'awl-cache-v2';
+const CACHE_NAME = 'awl-cache-v3';
 const ASSETS = [
   '/',               // índice (cache de shell)
   '/index.html',     // para fallback de navegação
