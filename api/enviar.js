@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // 1) Reconstrói as credenciais da conta de serviço a partir das ENVs
+    // --- 1) Credenciais (igual antes) ---
     const credentials = {
       type:                        process.env.GOOGLE_TYPE,
       project_id:                  process.env.GOOGLE_PROJECT_ID,
@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
       universe_domain:             process.env.GOOGLE_UNIVERSE_DOMAIN
     };
 
-    // 2) Cria o client JWT e autentica
+    // --- 2) Autenticação JWT ---
     const authClient = new google.auth.JWT({
       email:  credentials.client_email,
       key:    credentials.private_key,
@@ -35,47 +35,48 @@ module.exports = async function handler(req, res) {
       ]
     });
     await authClient.authorize();
-
     const sheets = google.sheets({ version: 'v4', auth: authClient });
-    const drive  = google.drive ({ version: 'v3', auth: authClient });
+    const drive  = google.drive({ version: 'v3', auth: authClient });
 
-    // 3) Extrai dados do corpo da requisição
+    // --- 3) Extrai dados ---
     const { latitude, longitude, rua, bairro, cidade, fotos = [] } = req.body;
     const linksFotos = [];
 
-    // 4) Para cada foto (URL pública do Blob ou pathname), faz fetch do Blob e envia ao Drive
+    // --- 4) Processa até 5 fotos (verificação de null e tipo) ---
     for (let i = 0; i < Math.min(fotos.length, 5); i++) {
       const foto = fotos[i];
-      // determina o pathname interno do Blob
+      if (!foto || typeof foto !== 'string') {
+        console.warn(`foto[${i}] inválida, pulando.`);
+        continue;
+      }
+
+      // determina pathname do Blob
       let pathname;
       if (foto.startsWith('http')) {
         const parsed = new URL(foto);
-        pathname = decodeURIComponent(parsed.pathname.slice(1)); // remove barra inicial
+        pathname = decodeURIComponent(parsed.pathname.slice(1));
       } else {
         pathname = foto;
       }
 
-      // obtém o stream do Blob
+      // faz download do Blob e envia ao Drive
       const { body: stream } = await get(pathname);
-
-      // envia ao Drive
       const filename = pathname.split('/').pop();
       const { data: upload } = await drive.files.create({
         resource: { name: filename, parents: [process.env.DRIVE_FOLDER_ID] },
         media:    { mimeType: 'application/octet-stream', body: stream },
         fields:   'id'
       });
-
-      // define permissão de leitura pública
       await drive.permissions.create({
         fileId: upload.id,
         requestBody: { role: 'reader', type: 'anyone' }
       });
-
-      linksFotos.push(`https://drive.google.com/file/d/${upload.id}/view?usp=sharing`);
+      linksFotos.push(
+        `https://drive.google.com/file/d/${upload.id}/view?usp=sharing`
+      );
     }
 
-    // 5) Monta a linha para o Google Sheets
+    // --- 5) Monta e grava no Sheets ---
     const timestamp = new Date()
       .toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const row = [
@@ -88,7 +89,6 @@ module.exports = async function handler(req, res) {
     ];
     while (row.length < 13) row.push('');
 
-    // 6) Insere no Sheets
     await sheets.spreadsheets.values.append({
       spreadsheetId:    process.env.SHEET_ID,
       range:            'COLETA DE DADOS AWL!A1',
@@ -97,8 +97,9 @@ module.exports = async function handler(req, res) {
       requestBody:      { values: [row] }
     });
 
-    // 7) Retorna sucesso
+    // --- 6) Sucesso ---
     return res.status(200).json({ success: true, links: linksFotos });
+
   } catch (err) {
     console.error('Erro na função /api/enviar:', err);
     return res.status(500).json({ error: err.message });
