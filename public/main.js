@@ -3,7 +3,10 @@
 const apiKey         = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
 const uploadEndpoint = "/api/upload";
 const enviarEndpoint = "/api/enviar";
+// nome do IndexedDB para salvar coletas offline
 const dbName         = "coletas_offline";
+// identificador da equipe (pode vir de login, config, etc)
+const equipeId       = "default";
 let db;
 
 // --- IndexedDB helpers ---
@@ -133,19 +136,19 @@ function configurarFormulario() {
     }
 
     try {
-      // 1) upload de até 5 fotos ao Blob
+      // 1) upload de cada foto ao Blob, agora enviando também &equipe=
       const files = document.getElementById("fotos").files;
       for (let i = 0; i < Math.min(files.length, 5); i++) {
         const file = files[i];
-        const up = await fetch(
-          `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}`,
+        const resUp = await fetch(
+          `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}&equipe=${encodeURIComponent(equipeId)}`,
           { method: "POST", body: file }
         );
-        if (!up.ok) {
-          const txt = await up.text();
-          throw new Error(`Upload falhou: ${txt}`);
+        if (!resUp.ok) {
+          const errTxt = await resUp.text();
+          throw new Error(`Upload falhou: ${errTxt}`);
         }
-        const { url } = await up.json();
+        const { url } = await resUp.json();
         payloadBase.fotos.push(url);
       }
 
@@ -155,30 +158,23 @@ function configurarFormulario() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payloadBase)
       });
-
       if (!resp.ok) {
-        // decide se é JSON ou texto
         const ct = resp.headers.get("Content-Type") || "";
-        let msg;
-        if (ct.includes("application/json")) {
-          const errJson = await resp.json();
-          msg = errJson.error || JSON.stringify(errJson);
-        } else {
-          msg = await resp.text();
-        }
-        throw new Error(msg);
+        const msg = ct.includes("application/json")
+          ? (await resp.json()).error
+          : await resp.text();
+        throw new Error(msg || resp.statusText);
       }
 
       form.reset();
       exibirSucesso(true);
 
     } catch (err) {
-      // se houve erro *mas* ainda estamos online, só alerta
       console.error(err);
       if (navigator.onLine) {
         alert("Erro ao enviar coleta: " + err.message);
       } else {
-        // se desconectou no meio do processo, salva offline
+        // se caiu durante o processo, salva offline
         await salvarOffline(payloadBase);
       }
     } finally {
@@ -195,13 +191,9 @@ function configurarSincronizacao() {
     await ensureDB();
     exibirLoading(true);
 
-    const store = db.transaction("coletas", "readonly").objectStore("coletas");
-    const allDados = await new Promise(r =>
-      (store.getAll().onsuccess = e => r(e.target.result))
-    );
-    const allKeys = await new Promise(r =>
-      (store.getAllKeys().onsuccess = e => r(e.target.result))
-    );
+    const store   = db.transaction("coletas", "readonly").objectStore("coletas");
+    const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
+    const allKeys  = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
 
     let enviado = 0;
     for (let i = 0; i < allDados.length; i++) {
