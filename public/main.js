@@ -1,11 +1,14 @@
-// main.js
+// public/main.js
 
 const apiKey = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
-const webhookUrl = "/api/enviar";
+const uploadEndpoint = "/api/upload";
+const enviarEndpoint = "/api/enviar";
 const dbName = "coletas_offline";
 let db;
 
-/** Abre o IndexedDB na primeira vez que precisar */
+// Se você quiser diferenciar por equipe, ajuste aqui:
+const equipeId = "default";
+
 async function ensureDB() {
   if (db) return;
   return new Promise((resolve, reject) => {
@@ -24,7 +27,6 @@ async function ensureDB() {
   });
 }
 
-/** Conta quantos registros estão pendentes no IndexedDB */
 async function atualizarStatusPendentes() {
   if (!db) return;
   const tx = db.transaction("coletas", "readonly");
@@ -39,7 +41,6 @@ async function atualizarStatusPendentes() {
   };
 }
 
-/** Feedbacks visuais */
 function exibirLoading(on) {
   document.getElementById("loading").style.display = on ? "flex" : "none";
 }
@@ -50,7 +51,6 @@ function exibirSincronizacao(on) {
   document.getElementById("sincronizacao").style.display = on ? "flex" : "none";
 }
 
-/** Geolocalização + reverse lookup */
 function configurarGeolocalizacao() {
   document.getElementById("btnCoordenadas").addEventListener("click", () => {
     exibirLoading(true);
@@ -86,7 +86,6 @@ function configurarGeolocalizacao() {
   });
 }
 
-/** Envio do formulário */
 function configurarFormulario() {
   const form = document.getElementById("formulario");
   const btnNova = document.getElementById("btnNovaColeta");
@@ -98,54 +97,67 @@ function configurarFormulario() {
     const [lat, lon] = (
       document.getElementById("coordenadas").value || ","
     ).split(",");
+
     const files = document.getElementById("fotos").files;
-    const fotosBase64 = [];
-    let totalSize = 0;
-
-    for (let i = 0; i < Math.min(files.length, 5); i++) {
-      const f = files[i];
-      totalSize += f.size;
-      if (f.size > 50e6 || totalSize > 200e6) {
-        alert("Limite de tamanho atingido.");
-        return exibirLoading(false);
-      }
-      fotosBase64.push(
-        await new Promise(r => {
-          const reader = new FileReader();
-          reader.onload = () => r(reader.result);
-          reader.readAsDataURL(f);
-        })
-      );
-    }
-
-    const dados = {
-      latitude: lat.trim(),
-      longitude: lon.trim(),
-      rua: document.getElementById("rua").value,
-      bairro: document.getElementById("bairro").value,
-      cidade: document.getElementById("cidade").value,
-      fotos: fotosBase64,
-    };
+    const fotosUrls = [];
 
     try {
-      const resp = await fetch(webhookUrl, {
+      // 1) Upload de cada arquivo para o Blob
+      for (let i = 0; i < Math.min(files.length, 5); i++) {
+        const file = files[i];
+        const uploadRes = await fetch(
+          `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}&equipe=${equipeId}`,
+          {
+            method: "POST",
+            body: file
+          }
+        );
+        if (!uploadRes.ok) {
+          const err = await uploadRes.text();
+          throw new Error(`Upload falhou: ${err}`);
+        }
+        const { url } = await uploadRes.json();
+        fotosUrls.push(url);
+      }
+
+      // 2) Chama o endpoint que grava no Sheets
+      const payload = {
+        latitude: lat.trim(),
+        longitude: lon.trim(),
+        rua: document.getElementById("rua").value,
+        bairro: document.getElementById("bairro").value,
+        cidade: document.getElementById("cidade").value,
+        fotos: fotosUrls
+      };
+      const resp = await fetch(enviarEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
+        body: JSON.stringify(payload)
       });
+
       if (!resp.ok) {
-        const txt = await resp.text();
-        alert("Falha ao enviar: " + txt);
+        const data = await resp.json();
+        alert("Falha ao enviar coleta: " + (data.error || JSON.stringify(data)));
       } else {
         form.reset();
         exibirSucesso(true);
       }
-    } catch {
-      // sem internet: salva no IndexedDB
+    } catch (err) {
+      // sem internet ou erro: salva no IndexedDB
       await ensureDB();
-      const tx = db.transaction("coletas", "readwrite");
-      tx.objectStore("coletas").add(dados);
-      await tx.complete;
+      await new Promise((res, rej) => {
+        const tx = db.transaction("coletas", "readwrite");
+        const reqAdd = tx.objectStore("coletas").add({
+          latitude: lat.trim(),
+          longitude: lon.trim(),
+          rua: document.getElementById("rua").value,
+          bairro: document.getElementById("bairro").value,
+          cidade: document.getElementById("cidade").value,
+          fotos: fotosUrls
+        });
+        reqAdd.onsuccess = () => res();
+        reqAdd.onerror = () => rej(reqAdd.error);
+      });
       await atualizarStatusPendentes();
       alert("Coleta salva offline. Sincronize depois.");
     } finally {
@@ -156,7 +168,6 @@ function configurarFormulario() {
   btnNova.addEventListener("click", () => exibirSucesso(false));
 }
 
-/** Sincronização dos pendentes */
 function configurarSincronizacao() {
   document.getElementById("btnSincronizar").addEventListener("click", async () => {
     await ensureDB();
@@ -177,15 +188,17 @@ function configurarSincronizacao() {
 
     for (let i = 0; i < allDados.length; i++) {
       try {
-        const res = await fetch(webhookUrl, {
+        const res = await fetch(enviarEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(allDados[i]),
+          body: JSON.stringify(allDados[i])
         });
         if (res.ok) {
           await new Promise(del => {
             const tx = db.transaction("coletas", "readwrite");
-            tx.objectStore("coletas").delete(allKeys[i]).onsuccess = del;
+            tx.objectStore("coletas")
+              .delete(allKeys[i])
+              .onsuccess = del;
           });
           enviado++;
           progresso.textContent = `Sincronizando ${enviado} de ${allDados.length}`;
@@ -212,7 +225,6 @@ function configurarSincronizacao() {
   });
 }
 
-/** Init */
 window.addEventListener("DOMContentLoaded", () => {
   exibirLoading(false);
   configurarGeolocalizacao();
