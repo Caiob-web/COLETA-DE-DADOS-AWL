@@ -104,14 +104,15 @@ function configurarGeolocalizacao() {
   });
 }
 
-// --- Formulário principal com logs ---
+// --- Formulário principal ---
 function configurarFormulario() {
   const form = document.getElementById("formulario");
+
   form.addEventListener("submit", async e => {
     e.preventDefault();
     exibirLoading(true);
 
-    // Monta payload base
+    // 1) Monta payload básico
     const [lat, lon] = (
       document.getElementById("coordenadas").value || ","
     ).split(",");
@@ -124,7 +125,7 @@ function configurarFormulario() {
       fotos:     []
     };
 
-    // Se offline, salva e retorna
+    // 2) Se estiver offline, salva e encerra
     if (!navigator.onLine) {
       await salvarOffline(payloadBase);
       exibirLoading(false);
@@ -135,7 +136,7 @@ function configurarFormulario() {
       const files = document.getElementById("fotos").files;
       console.log("Iniciando upload de", files.length, "arquivo(s)");
 
-      // 1) Upload ao Blob
+      // 3) Upload de até 5 fotos ao Blob
       for (let i = 0; i < Math.min(files.length, 5); i++) {
         const file = files[i];
         console.log(`Upload [${i}] do arquivo:`, file.name);
@@ -144,7 +145,6 @@ function configurarFormulario() {
           `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}&equipe=${encodeURIComponent(equipeId)}`,
           { method: "POST", body: file }
         );
-
         const text = await resUp.text();
         let result;
         try {
@@ -153,37 +153,33 @@ function configurarFormulario() {
           console.error("Resposta inválida do upload:", text);
           throw new Error("Upload retornou JSON inválido");
         }
-
         console.log("Resultado do upload:", result);
+
         if (!resUp.ok || typeof result.url !== "string") {
           throw new Error(
-            `Upload falhou ou URL ausente: ${resUp.status} ${result.error||text}`
+            `Upload falhou ou URL ausente: ${resUp.status} ${result.error || text}`
           );
         }
-
         payloadBase.fotos.push(result.url);
       }
 
       console.log("URLs obtidas após upload:", payloadBase.fotos);
 
-      // 2) Log do payload completo
+      // 4) Log do payload completo
       console.log("Enviando payload para /api/enviar:", payloadBase);
 
-      // 3) Envia para o Sheets/Drive
+      // 5) Envia coleta final ao Sheets/Drive
       const resp = await fetch(enviarEndpoint, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(payloadBase)
       });
 
-      const ct = resp.headers.get("Content-Type") || "";
       if (!resp.ok) {
-        let errMsg;
-        if (ct.includes("application/json")) {
-          errMsg = (await resp.json()).error;
-        } else {
-          errMsg = await resp.text();
-        }
+        const ct = resp.headers.get("Content-Type") || "";
+        const errMsg = ct.includes("application/json")
+          ? (await resp.json()).error
+          : await resp.text();
         throw new Error(errMsg || resp.statusText);
       }
 
@@ -213,13 +209,9 @@ function configurarSincronizacao() {
     await ensureDB();
     exibirLoading(true);
 
-    const store = db.transaction("coletas", "readonly").objectStore("coletas");
-    const allDados = await new Promise(r =>
-      (store.getAll().onsuccess = e => r(e.target.result))
-    );
-    const allKeys = await new Promise(r =>
-      (store.getAllKeys().onsuccess = e => r(e.target.result))
-    );
+    const store   = db.transaction("coletas", "readonly").objectStore("coletas");
+    const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
+    const allKeys  = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
 
     let enviado = 0;
     for (let i = 0; i < allDados.length; i++) {
