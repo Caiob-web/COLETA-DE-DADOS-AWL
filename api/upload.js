@@ -1,6 +1,6 @@
 // api/upload.js
 
-// garante que o @vercel/blob encontre o token de escrita
+// fallback do token nativo para o que o SDK espera
 if (!process.env.BLOB_STORE_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN) {
   process.env.BLOB_STORE_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 }
@@ -8,12 +8,12 @@ if (!process.env.BLOB_STORE_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN) {
 const { put } = require('@vercel/blob');
 
 module.exports = async function handler(req, res) {
-  // Só POST
+  // só aceita POST
   if (req.method !== 'POST') {
     return res.status(405).end('Método não permitido');
   }
 
-  // Extrai e valida query params
+  // extrai e valida query params
   const { filename, equipe } = req.query;
   console.log('UPLOAD /api/upload query:', req.query);
   if (!filename || !equipe) {
@@ -22,30 +22,32 @@ module.exports = async function handler(req, res) {
       .json({ error: 'Parâmetros “filename” e “equipe” são obrigatórios' });
   }
 
-  // Gera a key e dispara o put()
+  // monta a key no bucket
   const timestamp = Date.now();
   const key = `coletas/${equipe}/${timestamp}_${filename}`;
   console.log('UPLOAD put key =', key);
 
   try {
+    // grava no Blob
     const blob = await put(key, req.body, {
       access: 'public',
       addRandomSuffix: false
     });
     console.log('UPLOAD put result =', blob);
 
-    // Garante que URL e pathname sempre existam
-    if (!blob.url || !blob.pathname) {
-      console.error('UPLOAD: blob retornou sem url/pathname', blob);
+    // aqui o SDK retorna { url, key }
+    const blobKey = blob.key;
+    if (!blob.url || !blobKey) {
+      console.error('UPLOAD: blob retornou sem url ou key', blob);
       return res
         .status(500)
-        .json({ error: 'Upload não retornou url ou pathname' });
+        .json({ error: 'Upload não retornou url ou key' });
     }
 
-    // Responde corretamente
+    // responde com a URL pública e a key (usada depois para baixar o blob)
     return res.status(200).json({
       url:      blob.url,
-      pathname: blob.pathname
+      pathname: blobKey
     });
   } catch (err) {
     console.error('Erro em /api/upload:', err);
