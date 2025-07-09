@@ -3,9 +3,7 @@
 const apiKey         = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
 const uploadEndpoint = "/api/upload";
 const enviarEndpoint = "/api/enviar";
-// nome do IndexedDB para salvar coletas offline
 const dbName         = "coletas_offline";
-// identificador da equipe (pode vir de login, config, etc)
 const equipeId       = "default";
 let db;
 
@@ -136,7 +134,7 @@ function configurarFormulario() {
     }
 
     try {
-      // 1) upload de cada foto ao Blob, agora enviando também &equipe=
+      // 1) upload de cada foto ao Blob, incluindo parâmetro equipe
       const files = document.getElementById("fotos").files;
       for (let i = 0; i < Math.min(files.length, 5); i++) {
         const file = files[i];
@@ -151,6 +149,9 @@ function configurarFormulario() {
         const { url } = await resUp.json();
         payloadBase.fotos.push(url);
       }
+
+      // Log do payload que será enviado
+      console.log("Enviando para /api/enviar:", payloadBase);
 
       // 2) envia coleta final ao Sheets/Drive
       const resp = await fetch(enviarEndpoint, {
@@ -191,7 +192,7 @@ function configurarSincronizacao() {
     await ensureDB();
     exibirLoading(true);
 
-    const store   = db.transaction("coletas", "readonly").objectStore("coletas");
+    const store = db.transaction("coletas", "readonly").objectStore("coletas");
     const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
     const allKeys  = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
 
