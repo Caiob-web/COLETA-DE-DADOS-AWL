@@ -104,29 +104,27 @@ function configurarGeolocalizacao() {
   });
 }
 
-// --- Formulário principal ---
+// --- Formulário principal com logs ---
 function configurarFormulario() {
   const form = document.getElementById("formulario");
-  const btnNova = document.getElementById("btnNovaColeta");
-
   form.addEventListener("submit", async e => {
     e.preventDefault();
     exibirLoading(true);
 
-    // monta payload básico
+    // Monta payload base
     const [lat, lon] = (
       document.getElementById("coordenadas").value || ","
     ).split(",");
     const payloadBase = {
-      latitude: lat.trim(),
+      latitude:  lat.trim(),
       longitude: lon.trim(),
-      rua: document.getElementById("rua").value,
-      bairro: document.getElementById("bairro").value,
-      cidade: document.getElementById("cidade").value,
-      fotos: []
+      rua:       document.getElementById("rua").value,
+      bairro:    document.getElementById("bairro").value,
+      cidade:    document.getElementById("cidade").value,
+      fotos:     []
     };
 
-    // se estiver offline, salva e retorna
+    // Se offline, salva e retorna
     if (!navigator.onLine) {
       await salvarOffline(payloadBase);
       exibirLoading(false);
@@ -134,48 +132,70 @@ function configurarFormulario() {
     }
 
     try {
-      // 1) upload de cada foto ao Blob, incluindo parâmetro equipe
       const files = document.getElementById("fotos").files;
+      console.log("Iniciando upload de", files.length, "arquivo(s)");
+
+      // 1) Upload ao Blob
       for (let i = 0; i < Math.min(files.length, 5); i++) {
         const file = files[i];
+        console.log(`Upload [${i}] do arquivo:`, file.name);
+
         const resUp = await fetch(
           `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}&equipe=${encodeURIComponent(equipeId)}`,
           { method: "POST", body: file }
         );
-        if (!resUp.ok) {
-          const errTxt = await resUp.text();
-          throw new Error(`Upload falhou: ${errTxt}`);
+
+        const text = await resUp.text();
+        let result;
+        try {
+          result = JSON.parse(text);
+        } catch {
+          console.error("Resposta inválida do upload:", text);
+          throw new Error("Upload retornou JSON inválido");
         }
-        const { url } = await resUp.json();
-        payloadBase.fotos.push(url);
+
+        console.log("Resultado do upload:", result);
+        if (!resUp.ok || typeof result.url !== "string") {
+          throw new Error(
+            `Upload falhou ou URL ausente: ${resUp.status} ${result.error||text}`
+          );
+        }
+
+        payloadBase.fotos.push(result.url);
       }
 
-      // Log do payload que será enviado
-      console.log("Enviando para /api/enviar:", payloadBase);
+      console.log("URLs obtidas após upload:", payloadBase.fotos);
 
-      // 2) envia coleta final ao Sheets/Drive
+      // 2) Log do payload completo
+      console.log("Enviando payload para /api/enviar:", payloadBase);
+
+      // 3) Envia para o Sheets/Drive
       const resp = await fetch(enviarEndpoint, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadBase)
+        body:    JSON.stringify(payloadBase)
       });
+
+      const ct = resp.headers.get("Content-Type") || "";
       if (!resp.ok) {
-        const ct = resp.headers.get("Content-Type") || "";
-        const msg = ct.includes("application/json")
-          ? (await resp.json()).error
-          : await resp.text();
-        throw new Error(msg || resp.statusText);
+        let errMsg;
+        if (ct.includes("application/json")) {
+          errMsg = (await resp.json()).error;
+        } else {
+          errMsg = await resp.text();
+        }
+        throw new Error(errMsg || resp.statusText);
       }
 
+      console.log("/api/enviar retornou 200");
       form.reset();
       exibirSucesso(true);
 
     } catch (err) {
-      console.error(err);
+      console.error("Erro no fluxo de envio:", err);
       if (navigator.onLine) {
         alert("Erro ao enviar coleta: " + err.message);
       } else {
-        // se caiu durante o processo, salva offline
         await salvarOffline(payloadBase);
       }
     } finally {
@@ -183,7 +203,8 @@ function configurarFormulario() {
     }
   });
 
-  btnNova.addEventListener("click", () => exibirSucesso(false));
+  document.getElementById("btnNovaColeta")
+    .addEventListener("click", () => exibirSucesso(false));
 }
 
 // --- Sincronização manual ---
@@ -193,16 +214,20 @@ function configurarSincronizacao() {
     exibirLoading(true);
 
     const store = db.transaction("coletas", "readonly").objectStore("coletas");
-    const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
-    const allKeys  = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
+    const allDados = await new Promise(r =>
+      (store.getAll().onsuccess = e => r(e.target.result))
+    );
+    const allKeys = await new Promise(r =>
+      (store.getAllKeys().onsuccess = e => r(e.target.result))
+    );
 
     let enviado = 0;
     for (let i = 0; i < allDados.length; i++) {
       try {
         const r = await fetch(enviarEndpoint, {
-          method: "POST",
+          method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(allDados[i])
+          body:    JSON.stringify(allDados[i])
         });
         if (r.ok) {
           await new Promise(del => {
