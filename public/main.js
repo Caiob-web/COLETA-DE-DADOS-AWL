@@ -6,9 +6,7 @@ const enviarEndpoint = "/api/enviar";
 const dbName = "coletas_offline";
 let db;
 
-// Se você quiser diferenciar por equipe, ajuste aqui:
-const equipeId = "default";
-
+// --- IndexedDB helpers ---
 async function ensureDB() {
   if (db) return;
   return new Promise((resolve, reject) => {
@@ -27,11 +25,22 @@ async function ensureDB() {
   });
 }
 
+async function salvarOffline(payload) {
+  await ensureDB();
+  await new Promise((res, rej) => {
+    const tx = db.transaction("coletas", "readwrite");
+    const reqAdd = tx.objectStore("coletas").add(payload);
+    reqAdd.onsuccess = () => res();
+    reqAdd.onerror   = () => rej(reqAdd.error);
+  });
+  atualizarStatusPendentes();
+  alert("Coleta salva offline. Sincronize depois.");
+}
+
 async function atualizarStatusPendentes() {
   if (!db) return;
   const tx = db.transaction("coletas", "readonly");
-  const store = tx.objectStore("coletas");
-  const countReq = store.count();
+  const countReq = tx.objectStore("coletas").count();
   countReq.onsuccess = () => {
     const n = countReq.result;
     document.getElementById("statusPendentes").textContent =
@@ -41,6 +50,7 @@ async function atualizarStatusPendentes() {
   };
 }
 
+// --- UI helpers ---
 function exibirLoading(on) {
   document.getElementById("loading").style.display = on ? "flex" : "none";
 }
@@ -51,6 +61,7 @@ function exibirSincronizacao(on) {
   document.getElementById("sincronizacao").style.display = on ? "flex" : "none";
 }
 
+// --- Geolocalização e reverse ---
 function configurarGeolocalizacao() {
   document.getElementById("btnCoordenadas").addEventListener("click", () => {
     exibirLoading(true);
@@ -67,11 +78,17 @@ function configurarGeolocalizacao() {
             `https://us1.locationiq.com/v1/reverse?key=${apiKey}&lat=${lat}&lon=${lon}&format=json`
           );
           const data = await res.json();
-          document.getElementById("rua").value = data.address.road || "";
+          document.getElementById("rua").value =
+            data.address.road || "";
           document.getElementById("bairro").value =
-            data.address.suburb || data.address.neighbourhood || "";
+            data.address.suburb ||
+            data.address.neighbourhood ||
+            "";
           document.getElementById("cidade").value =
-            data.address.city || data.address.town || data.address.village || "";
+            data.address.city ||
+            data.address.town ||
+            data.address.village ||
+            "";
         } catch {
           alert("Erro ao buscar endereço.");
         } finally {
@@ -86,6 +103,7 @@ function configurarGeolocalizacao() {
   });
 }
 
+// --- Formulário principal ---
 function configurarFormulario() {
   const form = document.getElementById("formulario");
   const btnNova = document.getElementById("btnNovaColeta");
@@ -94,72 +112,56 @@ function configurarFormulario() {
     e.preventDefault();
     exibirLoading(true);
 
+    // monta payload básico
     const [lat, lon] = (
       document.getElementById("coordenadas").value || ","
     ).split(",");
+    const payloadBase = {
+      latitude: lat.trim(),
+      longitude: lon.trim(),
+      rua: document.getElementById("rua").value,
+      bairro: document.getElementById("bairro").value,
+      cidade: document.getElementById("cidade").value,
+      fotos: []
+    };
 
-    const files = document.getElementById("fotos").files;
-    const fotosUrls = [];
+    // offline? salva e retorna
+    if (!navigator.onLine) {
+      await salvarOffline(payloadBase);
+      exibirLoading(false);
+      return;
+    }
 
     try {
-      // 1) Upload de cada arquivo para o Blob
+      const files = document.getElementById("fotos").files;
+      // 1) upload de cada foto ao Blob
       for (let i = 0; i < Math.min(files.length, 5); i++) {
         const file = files[i];
-        const uploadRes = await fetch(
-          `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}&equipe=${equipeId}`,
-          {
-            method: "POST",
-            body: file
-          }
+        const res = await fetch(
+          `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}`,
+          { method: "POST", body: file }
         );
-        if (!uploadRes.ok) {
-          const err = await uploadRes.text();
-          throw new Error(`Upload falhou: ${err}`);
-        }
-        const { url } = await uploadRes.json();
-        fotosUrls.push(url);
+        if (!res.ok) throw new Error("Falha no upload Blob");
+        const { url } = await res.json();
+        payloadBase.fotos.push(url);
       }
 
-      // 2) Chama o endpoint que grava no Sheets
-      const payload = {
-        latitude: lat.trim(),
-        longitude: lon.trim(),
-        rua: document.getElementById("rua").value,
-        bairro: document.getElementById("bairro").value,
-        cidade: document.getElementById("cidade").value,
-        fotos: fotosUrls
-      };
+      // 2) envia coleta final ao Sheets/Drive
       const resp = await fetch(enviarEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payloadBase)
       });
-
       if (!resp.ok) {
-        const data = await resp.json();
-        alert("Falha ao enviar coleta: " + (data.error || JSON.stringify(data)));
-      } else {
-        form.reset();
-        exibirSucesso(true);
+        const err = await resp.json();
+        throw new Error(err.error || "Falha no envio");
       }
+
+      form.reset();
+      exibirSucesso(true);
     } catch (err) {
-      // sem internet ou erro: salva no IndexedDB
-      await ensureDB();
-      await new Promise((res, rej) => {
-        const tx = db.transaction("coletas", "readwrite");
-        const reqAdd = tx.objectStore("coletas").add({
-          latitude: lat.trim(),
-          longitude: lon.trim(),
-          rua: document.getElementById("rua").value,
-          bairro: document.getElementById("bairro").value,
-          cidade: document.getElementById("cidade").value,
-          fotos: fotosUrls
-        });
-        reqAdd.onsuccess = () => res();
-        reqAdd.onerror = () => rej(reqAdd.error);
-      });
-      await atualizarStatusPendentes();
-      alert("Coleta salva offline. Sincronize depois.");
+      // qualquer erro de rede ou upload cai aqui
+      await salvarOffline(payloadBase);
     } finally {
       exibirLoading(false);
     }
@@ -168,24 +170,17 @@ function configurarFormulario() {
   btnNova.addEventListener("click", () => exibirSucesso(false));
 }
 
+// --- Sincronização manual ---
 function configurarSincronizacao() {
   document.getElementById("btnSincronizar").addEventListener("click", async () => {
     await ensureDB();
     exibirLoading(true);
-
-    const progresso = document.getElementById("progressoSincronizacao");
-    const wrapper = document.getElementById("barraProgressoWrapper");
-    const barra = document.getElementById("barraProgresso");
-    wrapper.style.display = "block";
-    barra.style.width = "0%";
 
     const store = db.transaction("coletas", "readonly").objectStore("coletas");
     const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
     const allKeys = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
 
     let enviado = 0;
-    progresso.textContent = `Sincronizando 0 de ${allDados.length}`;
-
     for (let i = 0; i < allDados.length; i++) {
       try {
         const res = await fetch(enviarEndpoint, {
@@ -201,33 +196,31 @@ function configurarSincronizacao() {
               .onsuccess = del;
           });
           enviado++;
-          progresso.textContent = `Sincronizando ${enviado} de ${allDados.length}`;
-          barra.style.width = `${((enviado / allDados.length) * 100).toFixed(1)}%`;
         }
       } catch {
-        progresso.textContent = "Erro ao sincronizar.";
-        break;
+        break; // se falhar, mantém o restante offline
       }
     }
 
     exibirLoading(false);
-    await atualizarStatusPendentes();
-    if (enviado === allDados.length) {
+    atualizarStatusPendentes();
+    if (enviado === allDados.length && enviado > 0) {
       exibirSincronizacao(true);
-      setTimeout(() => (wrapper.style.display = "none"), 1500);
-    } else {
-      wrapper.style.display = "none";
+      setTimeout(() => {
+        document.getElementById("barraProgressoWrapper").style.display = "none";
+      }, 1500);
     }
   });
 
-  document.getElementById("btnFecharSincronizacao").addEventListener("click", () => {
-    exibirSincronizacao(false);
-  });
+  document.getElementById("btnFecharSincronizacao")
+    .addEventListener("click", () => exibirSincronizacao(false));
 }
 
+// --- Init ---
 window.addEventListener("DOMContentLoaded", () => {
   exibirLoading(false);
   configurarGeolocalizacao();
   configurarFormulario();
   configurarSincronizacao();
+  atualizarStatusPendentes();
 });
