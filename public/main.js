@@ -112,10 +112,8 @@ function configurarFormulario() {
     e.preventDefault();
     exibirLoading(true);
 
-    // 1) Monta payload básico
-    const [lat, lon] = (
-      document.getElementById("coordenadas").value || ","
-    ).split(",");
+    // 1) Monta payload
+    const [lat, lon] = (document.getElementById("coordenadas").value || ",").split(",");
     const payloadBase = {
       latitude:  lat.trim(),
       longitude: lon.trim(),
@@ -125,7 +123,7 @@ function configurarFormulario() {
       fotos:     []
     };
 
-    // 2) Se estiver offline, salva e encerra
+    // 2) Se offline, salva e retorna
     if (!navigator.onLine) {
       await salvarOffline(payloadBase);
       exibirLoading(false);
@@ -136,7 +134,7 @@ function configurarFormulario() {
       const files = document.getElementById("fotos").files;
       console.log("Iniciando upload de", files.length, "arquivo(s)");
 
-      // 3) Upload de até 5 fotos ao Blob
+      // 3) Upload ao Blob
       for (let i = 0; i < Math.min(files.length, 5); i++) {
         const file = files[i];
         console.log(`Upload [${i}] do arquivo:`, file.name);
@@ -156,25 +154,20 @@ function configurarFormulario() {
         console.log("Resultado do upload:", result);
 
         if (!resUp.ok || typeof result.url !== "string") {
-          throw new Error(
-            `Upload falhou ou URL ausente: ${resUp.status} ${result.error || text}`
-          );
+          throw new Error(`Upload falhou ou URL ausente: ${resUp.status} ${result.error || text}`);
         }
         payloadBase.fotos.push(result.url);
       }
 
-      console.log("URLs obtidas após upload:", payloadBase.fotos);
+      console.log("URLs após upload:", payloadBase.fotos);
 
-      // 4) Log do payload completo
-      console.log("Enviando payload para /api/enviar:", payloadBase);
-
-      // 5) Envia coleta final ao Sheets/Drive
+      // 4) Envia para /api/enviar
+      console.log("Enviando payload:", payloadBase);
       const resp = await fetch(enviarEndpoint, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(payloadBase)
       });
-
       if (!resp.ok) {
         const ct = resp.headers.get("Content-Type") || "";
         const errMsg = ct.includes("application/json")
@@ -186,7 +179,6 @@ function configurarFormulario() {
       console.log("/api/enviar retornou 200");
       form.reset();
       exibirSucesso(true);
-
     } catch (err) {
       console.error("Erro no fluxo de envio:", err);
       if (navigator.onLine) {
@@ -210,8 +202,12 @@ function configurarSincronizacao() {
     exibirLoading(true);
 
     const store   = db.transaction("coletas", "readonly").objectStore("coletas");
-    const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
-    const allKeys  = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
+    const allDados = await new Promise(r =>
+      (store.getAll().onsuccess = e => r(e.target.result))
+    );
+    const allKeys = await new Promise(r =>
+      (store.getAllKeys().onsuccess = e => r(e.target.result))
+    );
 
     let enviado = 0;
     for (let i = 0; i < allDados.length; i++) {
@@ -251,7 +247,11 @@ function configurarSincronizacao() {
 
 // --- Init ---
 window.addEventListener("DOMContentLoaded", () => {
+  // Esconder tudo ao abrir
   exibirLoading(false);
+  exibirSucesso(false);
+  exibirSincronizacao(false);
+
   configurarGeolocalizacao();
   configurarFormulario();
   configurarSincronizacao();
