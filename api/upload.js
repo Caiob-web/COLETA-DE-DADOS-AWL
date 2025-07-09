@@ -1,6 +1,6 @@
 // api/upload.js
 
-// fallback do token nativo para o que o SDK espera
+// Garante que o @vercel/blob encontre o token de escrita
 if (!process.env.BLOB_STORE_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN) {
   process.env.BLOB_STORE_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 }
@@ -8,12 +8,12 @@ if (!process.env.BLOB_STORE_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN) {
 const { put } = require('@vercel/blob');
 
 module.exports = async function handler(req, res) {
-  // só aceita POST
+  // Só aceita POST
   if (req.method !== 'POST') {
     return res.status(405).end('Método não permitido');
   }
 
-  // extrai e valida query params
+  // Extrai e valida query params
   const { filename, equipe } = req.query;
   console.log('UPLOAD /api/upload query:', req.query);
   if (!filename || !equipe) {
@@ -22,32 +22,42 @@ module.exports = async function handler(req, res) {
       .json({ error: 'Parâmetros “filename” e “equipe” são obrigatórios' });
   }
 
-  // monta a key no bucket
+  // Monta a key no bucket
   const timestamp = Date.now();
   const key = `coletas/${equipe}/${timestamp}_${filename}`;
   console.log('UPLOAD put key =', key);
 
+  // Lê o corpo inteiro como Buffer, para depois passar ao blob
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  const fileBuffer = Buffer.concat(chunks);
+  console.log('UPLOAD: corpo recebido, tamanho =', fileBuffer.length);
+
   try {
-    // grava no Blob
-    const blob = await put(key, req.body, {
+    // Envia ao Vercel Blob, incluindo o header x-content-length
+    const blob = await put(key, fileBuffer, {
       access: 'public',
-      addRandomSuffix: false
+      addRandomSuffix: false,
+      headers: {
+        'x-content-length': fileBuffer.length
+      }
     });
     console.log('UPLOAD put result =', blob);
 
-    // aqui o SDK retorna { url, key }
-    const blobKey = blob.key;
-    if (!blob.url || !blobKey) {
-      console.error('UPLOAD: blob retornou sem url ou key', blob);
+    // O SDK retorna { url, key }
+    if (!blob.url || !blob.key) {
+      console.error('UPLOAD: resposta inesperada', blob);
       return res
         .status(500)
         .json({ error: 'Upload não retornou url ou key' });
     }
 
-    // responde com a URL pública e a key (usada depois para baixar o blob)
+    // Responde com a URL pública e a key (pathname)
     return res.status(200).json({
       url:      blob.url,
-      pathname: blobKey
+      pathname: blob.key
     });
   } catch (err) {
     console.error('Erro em /api/upload:', err);
