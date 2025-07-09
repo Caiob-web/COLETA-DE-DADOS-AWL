@@ -1,6 +1,6 @@
 // api/upload.js
 
-// Garantia de que o token será lido pelo SDK
+// fallback do token nativo para o que o SDK espera
 if (!process.env.BLOB_STORE_WRITE_TOKEN && process.env.BLOB_READ_WRITE_TOKEN) {
   process.env.BLOB_STORE_WRITE_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 }
@@ -25,24 +25,26 @@ module.exports = async function handler(req, res) {
   console.log('UPLOAD put key =', key);
 
   try {
-    // Aqui passamos o próprio `req` — o SDK pega a stream e os headers corretamente
+    // passa o req direto para o put, o SDK cuidará dos headers
     const blob = await put(key, req, {
       access: 'public',
       addRandomSuffix: false
     });
-
     console.log('UPLOAD put result =', blob);
 
-    if (!blob.url || !blob.key) {
+    // agora a propriedade é `pathname`
+    const blobUrl  = blob.url;
+    const blobPath = blob.pathname;
+    if (!blobUrl || !blobPath) {
       console.error('UPLOAD: resposta inesperada', blob);
       return res
         .status(500)
-        .json({ error: 'Upload não retornou url ou key' });
+        .json({ error: 'Upload não retornou url ou pathname' });
     }
 
     return res.status(200).json({
-      url:      blob.url,
-      pathname: blob.key
+      url:      blobUrl,
+      pathname: blobPath
     });
   } catch (err) {
     console.error('Erro em /api/upload:', err);
