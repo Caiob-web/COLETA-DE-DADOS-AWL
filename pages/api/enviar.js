@@ -2,6 +2,7 @@
 
 const { google } = require('googleapis');
 const { get }   = require('@vercel/blob');
+const { URL }   = require('url');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -42,24 +43,22 @@ module.exports = async function handler(req, res) {
     const { latitude, longitude, rua, bairro, cidade, fotos = [] } = req.body;
     const linksFotos = [];
 
-    // 4) Para cada foto (que vem como URL pública do Blob ou como pathname), faz fetch do Blob e envia ao Drive
+    // 4) Para cada foto (URL pública do Blob ou pathname), faz fetch do Blob e envia ao Drive
     for (let i = 0; i < Math.min(fotos.length, 5); i++) {
-      let foto = fotos[i];
-      // Se vier como URL, extrai o pathname (key)
+      const foto = fotos[i];
+      // determina o pathname interno do Blob
       let pathname;
       if (foto.startsWith('http')) {
-        const url = new URL(foto);
-        pathname = decodeURIComponent(url.pathname.slice(1)); // retira "/" inicial
+        const parsed = new URL(foto);
+        pathname = decodeURIComponent(parsed.pathname.slice(1)); // remove barra inicial
       } else {
         pathname = foto;
       }
 
-      // Busca o blob
-      const blobResp = await get(pathname);
-      // blobResp.body é um stream Readable no Node.js
-      const stream = blobResp.body;
+      // obtém o stream do Blob
+      const { body: stream } = await get(pathname);
 
-      // Envia ao Drive
+      // envia ao Drive
       const filename = pathname.split('/').pop();
       const { data: upload } = await drive.files.create({
         resource: { name: filename, parents: [process.env.DRIVE_FOLDER_ID] },
@@ -67,15 +66,13 @@ module.exports = async function handler(req, res) {
         fields:   'id'
       });
 
-      // Dá permissão pública
+      // define permissão de leitura pública
       await drive.permissions.create({
         fileId: upload.id,
         requestBody: { role: 'reader', type: 'anyone' }
       });
 
-      linksFotos.push(
-        `https://drive.google.com/file/d/${upload.id}/view?usp=sharing`
-      );
+      linksFotos.push(`https://drive.google.com/file/d/${upload.id}/view?usp=sharing`);
     }
 
     // 5) Monta a linha para o Google Sheets
