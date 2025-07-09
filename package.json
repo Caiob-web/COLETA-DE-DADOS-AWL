@@ -11,7 +11,7 @@
     "multer": "^2.0.1",
     "googleapis": "^150.0.1",
     "cors": "^2.8.5",
-    "dotenv": "^10.0.0"
+    "dotenv": "^10.0.0",
     "@vercel/blob": "^0.1.0"
   },
   "engines": {
