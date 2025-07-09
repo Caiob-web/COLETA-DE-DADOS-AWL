@@ -3,7 +3,7 @@
 const apiKey = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
 const uploadEndpoint = "/api/upload";
 const enviarEndpoint = "/api/enviar";
-const dbName = "coletas_offline";
+const dbName = "coletas_online";
 let db;
 
 // --- IndexedDB helpers ---
@@ -34,7 +34,7 @@ async function salvarOffline(payload) {
     reqAdd.onerror   = () => rej(reqAdd.error);
   });
   atualizarStatusPendentes();
-  alert("Coleta salva offline. Sincronize depois.");
+  alert("Sem conexão, coleta salva offline. Sincronize depois.");
 }
 
 async function atualizarStatusPendentes() {
@@ -125,7 +125,7 @@ function configurarFormulario() {
       fotos: []
     };
 
-    // offline? salva e retorna
+    // se estiver offline, salva e retorna
     if (!navigator.onLine) {
       await salvarOffline(payloadBase);
       exibirLoading(false);
@@ -159,9 +159,16 @@ function configurarFormulario() {
 
       form.reset();
       exibirSucesso(true);
+
     } catch (err) {
-      // qualquer erro de rede ou upload cai aqui
-      await salvarOffline(payloadBase);
+      // se der erro mas ainda estiver online, apenas alerta
+      console.error(err);
+      if (navigator.onLine) {
+        alert("Erro ao enviar coleta: " + err.message);
+      } else {
+        // fallback: salva offline se a conexão caiu durante o processo
+        await salvarOffline(payloadBase);
+      }
     } finally {
       exibirLoading(false);
     }
@@ -177,8 +184,12 @@ function configurarSincronizacao() {
     exibirLoading(true);
 
     const store = db.transaction("coletas", "readonly").objectStore("coletas");
-    const allDados = await new Promise(r => (store.getAll().onsuccess = e => r(e.target.result)));
-    const allKeys = await new Promise(r => (store.getAllKeys().onsuccess = e => r(e.target.result)));
+    const allDados = await new Promise(r =>
+      (store.getAll().onsuccess = e => r(e.target.result))
+    );
+    const allKeys = await new Promise(r =>
+      (store.getAllKeys().onsuccess = e => r(e.target.result))
+    );
 
     let enviado = 0;
     for (let i = 0; i < allDados.length; i++) {
