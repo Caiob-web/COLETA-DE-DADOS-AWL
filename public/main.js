@@ -1,9 +1,9 @@
 // public/main.js
 
-const apiKey = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
+const apiKey         = "pk.481f46d0a98c9a0b3fb99b5d1cbd9658";
 const uploadEndpoint = "/api/upload";
 const enviarEndpoint = "/api/enviar";
-const dbName = "coletas_offline";
+const dbName         = "coletas_offline";
 let db;
 
 // --- IndexedDB helpers ---
@@ -46,7 +46,7 @@ async function atualizarStatusPendentes() {
     document.getElementById("statusPendentes").textContent =
       n > 0
         ? `${n} coleta(s) offline pendente(s)`
-        : "Nenhuma coleta offline salva";
+        : "Nenhuma coleta offline pendente";
   };
 }
 
@@ -133,16 +133,19 @@ function configurarFormulario() {
     }
 
     try {
+      // 1) upload de até 5 fotos ao Blob
       const files = document.getElementById("fotos").files;
-      // 1) upload de cada foto ao Blob
       for (let i = 0; i < Math.min(files.length, 5); i++) {
         const file = files[i];
-        const res = await fetch(
+        const up = await fetch(
           `${uploadEndpoint}?filename=${encodeURIComponent(file.name)}`,
           { method: "POST", body: file }
         );
-        if (!res.ok) throw new Error("Falha no upload Blob");
-        const { url } = await res.json();
+        if (!up.ok) {
+          const txt = await up.text();
+          throw new Error(`Upload falhou: ${txt}`);
+        }
+        const { url } = await up.json();
         payloadBase.fotos.push(url);
       }
 
@@ -152,21 +155,30 @@ function configurarFormulario() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payloadBase)
       });
+
       if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error || "Falha no envio");
+        // decide se é JSON ou texto
+        const ct = resp.headers.get("Content-Type") || "";
+        let msg;
+        if (ct.includes("application/json")) {
+          const errJson = await resp.json();
+          msg = errJson.error || JSON.stringify(errJson);
+        } else {
+          msg = await resp.text();
+        }
+        throw new Error(msg);
       }
 
       form.reset();
       exibirSucesso(true);
 
     } catch (err) {
-      // se der erro mas ainda estiver online, apenas alerta
+      // se houve erro *mas* ainda estamos online, só alerta
       console.error(err);
       if (navigator.onLine) {
         alert("Erro ao enviar coleta: " + err.message);
       } else {
-        // fallback: salva offline se a conexão caiu durante o processo
+        // se desconectou no meio do processo, salva offline
         await salvarOffline(payloadBase);
       }
     } finally {
@@ -194,12 +206,12 @@ function configurarSincronizacao() {
     let enviado = 0;
     for (let i = 0; i < allDados.length; i++) {
       try {
-        const res = await fetch(enviarEndpoint, {
+        const r = await fetch(enviarEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(allDados[i])
         });
-        if (res.ok) {
+        if (r.ok) {
           await new Promise(del => {
             const tx = db.transaction("coletas", "readwrite");
             tx.objectStore("coletas")
@@ -209,7 +221,7 @@ function configurarSincronizacao() {
           enviado++;
         }
       } catch {
-        break; // se falhar, mantém o restante offline
+        break;
       }
     }
 
