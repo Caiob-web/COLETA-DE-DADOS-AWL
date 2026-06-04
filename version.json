@@ -6,9 +6,9 @@
     "sha256": "284383732815CCB3C10920362894089CBF1032BE45A91A49230B83FFE68824B7"
   },
   "dashboard": {
-    "versionCode": 1,
-    "versionName": "0.1.0",
-    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaCampoDashboard-0.1.0.exe",
-    "sha256": "6B86FB33269C422700816D12FD29F1DC74F59EB39AA2E2475142432DCF67EB92"
+    "versionCode": 2,
+    "versionName": "0.1.1",
+    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaCampoDashboard-0.1.1.exe",
+    "sha256": "087D2A04A198A17D6CFFBA3E7D21279EB0013DF924FD429FD325D2894D4AED4C"
   }
 }
