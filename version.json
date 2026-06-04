@@ -1,14 +1,14 @@
 {
   "apk": {
-    "versionCode": 10,
-    "versionName": "0.5.4",
-    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaCampo-debug-0.5.4.apk",
-    "sha256": "284383732815CCB3C10920362894089CBF1032BE45A91A49230B83FFE68824B7"
+    "versionCode": 11,
+    "versionName": "0.5.5",
+    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaCampo-debug-0.5.5.apk",
+    "sha256": "F890DA3411BAC929EA1FD9FBBD534202D6D9485ECCA131900DCFD2DEFCCE1C8A"
   },
   "dashboard": {
-    "versionCode": 2,
-    "versionName": "0.1.1",
-    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaCampoDashboard-0.1.1.exe",
-    "sha256": "087D2A04A198A17D6CFFBA3E7D21279EB0013DF924FD429FD325D2894D4AED4C"
+    "versionCode": 3,
+    "versionName": "0.2.0",
+    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaCampoDashboard-0.2.0.exe",
+    "sha256": "4F08CE40D9C7F80E19F1237CAD43FDD533DAB0A2E7A1697E6DB372D0B38C9428"
   }
 }
