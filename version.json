@@ -6,9 +6,9 @@
     "sha256": "EAB2F747C56463333475F59AAEEBF3E66E96BE262C3FAA33360A344199B58C7E"
   },
   "dashboard": {
-    "versionCode": 18,
-    "versionName": "0.5.2",
-    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaDadosAdministrativoSetup-0.5.2.exe",
-    "sha256": "CB65FC6BA3AE649AD129E7C79266672E1D679528F40EB470AE8B73A437070D14"
+    "versionCode": 19,
+    "versionName": "0.5.3",
+    "file": "https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaDadosAdministrativoSetup-0.5.3.exe",
+    "sha256": "14E9289931C6D8B7829E857DE8C2CBE056C73BD762172954C4105A1132183A0C"
   }
 }
