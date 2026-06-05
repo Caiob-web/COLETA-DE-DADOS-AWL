@@ -6,186 +6,30 @@
   <title>Coleta de Dados | Downloads</title>
   <meta name="description" content="Downloads oficiais do APK das equipes e do instalador Windows administrativo do Coleta de Dados.">
   <style>
-    :root {
-      --bg: #f4f7fa;
-      --ink: #14202b;
-      --muted: #5d7082;
-      --panel: #ffffff;
-      --line: #d9e3ec;
-      --green: #00a878;
-      --blue: #1e6cff;
-      --dark: #101820;
-      --shadow: 0 20px 45px rgba(20, 32, 43, .10);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background:
-        linear-gradient(135deg, rgba(0, 168, 120, .11), transparent 38%),
-        linear-gradient(315deg, rgba(30, 108, 255, .11), transparent 34%),
-        var(--bg);
-      color: var(--ink);
-      font-family: "Segoe UI", Roboto, Arial, sans-serif;
-    }
-
-    main {
-      width: min(1120px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 40px 0;
-    }
-
-    .hero {
-      min-height: 360px;
-      display: grid;
-      align-items: center;
-      gap: 26px;
-      grid-template-columns: 1.1fr .9fr;
-    }
-
-    .eyebrow {
-      color: var(--green);
-      font-size: 12px;
-      font-weight: 850;
-      letter-spacing: .08em;
-      margin: 0 0 10px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(36px, 6vw, 70px);
-      line-height: .98;
-      letter-spacing: 0;
-    }
-
-    .lead {
-      color: var(--muted);
-      font-size: 18px;
-      line-height: 1.55;
-      max-width: 680px;
-      margin: 18px 0 0;
-    }
-
-    .brand-panel {
-      background: var(--dark);
-      border-radius: 10px;
-      padding: 28px;
-      box-shadow: var(--shadow);
-      color: #fff;
-      min-height: 260px;
-      display: grid;
-      align-content: center;
-      gap: 18px;
-    }
-
-    .logo-box {
-      display: inline-flex;
-      width: fit-content;
-      background: #fff;
-      border-radius: 8px;
-      padding: 10px 16px;
-    }
-
-    .logo-box img {
-      width: 160px;
-      height: auto;
-      display: block;
-    }
-
-    .status {
-      display: inline-flex;
-      width: fit-content;
-      border-radius: 999px;
-      padding: 8px 12px;
-      background: rgba(0, 168, 120, .18);
-      color: #90f0d4;
-      font-weight: 800;
-      font-size: 12px;
-    }
-
-    .downloads {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      margin-top: 18px;
-    }
-
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 22px;
-      box-shadow: var(--shadow);
-    }
-
-    .card h2 {
-      margin: 0;
-      font-size: 24px;
-    }
-
-    .card p {
-      color: var(--muted);
-      line-height: 1.5;
-      margin: 10px 0 18px;
-    }
-
-    .button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 44px;
-      padding: 0 18px;
-      border-radius: 8px;
-      background: var(--green);
-      color: #fff;
-      text-decoration: none;
-      font-weight: 800;
-    }
-
-    .button.blue {
-      background: var(--blue);
-    }
-
-    .meta {
-      display: grid;
-      gap: 8px;
-      margin-top: 18px;
-      padding-top: 16px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    code {
-      color: #203040;
-      overflow-wrap: anywhere;
-    }
-
-    .info {
-      margin-top: 16px;
-      background: #eaf2f7;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 18px;
-      color: #35485a;
-      line-height: 1.55;
-    }
-
-    footer {
-      width: min(1120px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 0 0 34px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    @media (max-width: 820px) {
-      .hero,
-      .downloads {
-        grid-template-columns: 1fr;
-      }
-    }
+    :root { --bg:#f4f7fa; --ink:#14202b; --muted:#5d7082; --panel:#fff; --line:#d9e3ec; --green:#00a878; --blue:#1e6cff; --dark:#101820; --shadow:0 20px 45px rgba(20,32,43,.10); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:linear-gradient(135deg,rgba(0,168,120,.11),transparent 38%),linear-gradient(315deg,rgba(30,108,255,.11),transparent 34%),var(--bg); color:var(--ink); font-family:"Segoe UI",Roboto,Arial,sans-serif; }
+    main, footer { width:min(1120px,calc(100% - 32px)); margin:0 auto; }
+    main { padding:40px 0; }
+    .hero { min-height:340px; display:grid; align-items:center; gap:26px; grid-template-columns:1.1fr .9fr; }
+    .eyebrow { color:var(--green); font-size:12px; font-weight:850; letter-spacing:.08em; margin:0 0 10px; }
+    h1 { margin:0; font-size:clamp(36px,6vw,70px); line-height:.98; letter-spacing:0; }
+    .lead { color:var(--muted); font-size:18px; line-height:1.55; max-width:680px; margin:18px 0 0; }
+    .brand-panel { background:var(--dark); border-radius:10px; padding:28px; box-shadow:var(--shadow); color:#fff; min-height:260px; display:grid; align-content:center; gap:18px; }
+    .logo-box { display:inline-flex; width:fit-content; background:#fff; border-radius:8px; padding:10px 16px; }
+    .logo-box img { width:160px; height:auto; display:block; }
+    .status { display:inline-flex; width:fit-content; border-radius:999px; padding:8px 12px; background:rgba(0,168,120,.18); color:#90f0d4; font-weight:800; font-size:12px; }
+    .downloads { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:18px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:22px; box-shadow:var(--shadow); }
+    .card h2 { margin:0; font-size:24px; }
+    .card p { color:var(--muted); line-height:1.5; margin:10px 0 18px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; border-radius:8px; background:var(--green); color:#fff; text-decoration:none; font-weight:800; }
+    .button.blue { background:var(--blue); }
+    .meta { display:grid; gap:8px; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+    code { color:#203040; overflow-wrap:anywhere; }
+    .info { margin-top:16px; background:#eaf2f7; border:1px solid var(--line); border-radius:10px; padding:18px; color:#35485a; line-height:1.55; }
+    footer { padding:0 0 34px; color:var(--muted); font-size:13px; }
+    @media (max-width:820px) { .hero, .downloads { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -197,47 +41,27 @@
         <p class="lead">Instale o aplicativo Android das equipes de campo e o software administrativo Windows para receber, acompanhar e auditar registros e fotos vindos do campo.</p>
       </div>
       <aside class="brand-panel">
-        <div class="logo-box">
-          <img src="https://www.edponline.com.br/images/rebranding/logo_novo_edp.svg" alt="EDP">
-        </div>
-        <div>
-          <strong>Distribuicao Coleta de Dados</strong>
-          <p class="lead" style="font-size:15px;color:#b8c7d5;margin-top:8px">APK das equipes e instalador do administrativo publicados para teste operacional.</p>
-        </div>
+        <div class="logo-box"><img src="https://www.edponline.com.br/images/rebranding/logo_novo_edp.svg" alt="EDP"></div>
+        <div><strong>Distribuicao Coleta de Dados</strong><p class="lead" style="font-size:15px;color:#b8c7d5;margin-top:8px">APK das equipes e instalador do administrativo publicados para teste operacional.</p></div>
         <span class="status">SOFTWARE ATUALIZADO</span>
       </aside>
     </section>
-
     <section class="downloads">
       <article class="card">
         <h2>APK Android</h2>
         <p>Aplicativo das equipes de campo com login operacional, uso offline, fotos no Vercel Blob, GPS automatico e sincronizacao com o administrativo.</p>
         <a class="button" href="https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaCampo-debug-0.5.5.apk" download>Baixar APK</a>
-        <div class="meta">
-          <span>Versao: <strong>0.5.5</strong></span>
-          <span>Codigo: <strong>11</strong></span>
-          <span>SHA256: <code>F890DA3411BAC929EA1FD9FBBD534202D6D9485ECCA131900DCFD2DEFCCE1C8A</code></span>
-        </div>
+        <div class="meta"><span>Versao: <strong>0.5.5</strong></span><span>Codigo: <strong>11</strong></span><span>SHA256: <code>F890DA3411BAC929EA1FD9FBBD534202D6D9485ECCA131900DCFD2DEFCCE1C8A</code></span></div>
       </article>
-
       <article class="card">
         <h2>Administrativo Windows</h2>
-        <p>Instalador do software em C# para o administrativo criar login e senha em tela separada, memorizar credenciais, receber registros em dashboard estilo Base44, filtrar dados e visualizar fotos do Vercel Blob. Cria atalhos no PC.</p>
-        <a class="button blue" href="https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaDadosAdministrativoSetup-0.2.8.exe" download>Baixar Instalador</a>
-        <div class="meta">
-          <span>Versao: <strong>0.2.8</strong></span>
-          <span>Codigo: <strong>11</strong></span>
-          <span>SHA256: <code>2A17D5A351FAD8E0DB85446CFE89FCC8DCB4251967584089B12293077CEDF25D</code></span>
-        </div>
+        <p>Instalador do software em C# com cache local, modo offline, cookie leve, WebView dedicado, tela de login/cadastro e dashboard completo para acompanhar registros e fotos.</p>
+        <a class="button blue" href="https://zscg6ixur6lesndv.public.blob.vercel-storage.com/downloads/coleta-dados/ColetaDadosAdministrativoSetup-0.2.9.exe" download>Baixar Instalador</a>
+        <div class="meta"><span>Versao: <strong>0.2.9</strong></span><span>Codigo: <strong>12</strong></span><span>SHA256: <code>014A568E276141D3BC85B64D7688A0257B127C4F3BE0D7F1D07AA2A6697F7EF1</code></span></div>
       </article>
     </section>
-
-    <section class="info">
-      O APK e o Administrativo Windows consultam a API de versao. Quando uma versao nova for publicada, eles exibem aviso de atualizacao; quando estiverem na ultima versao, exibem <strong>SOFTWARE ATUALIZADO</strong>.
-    </section>
+    <section class="info">O APK e o Administrativo Windows consultam a API de versao. Quando uma versao nova for publicada, eles exibem aviso de atualizacao; quando estiverem na ultima versao, exibem <strong>SOFTWARE ATUALIZADO</strong>.</section>
   </main>
-  <footer>
-    Coleta de Dados | EDP | Neon, Vercel Blob e Administrativo Windows
-  </footer>
+  <footer>Coleta de Dados | EDP | Neon, Vercel Blob e Administrativo Windows</footer>
 </body>
 </html>
